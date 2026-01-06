@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   content TEXT NOT NULL,                    -- The actual text content
   metadata JSONB DEFAULT '{}',              -- Additional metadata (source, title, etc.)
-  embedding VECTOR(1536),                   -- OpenAI ada-002 produces 1536-dimensional vectors
+  embedding VECTOR(768),                    -- Gemini text-embedding-004 produces 768-dimensional vectors
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

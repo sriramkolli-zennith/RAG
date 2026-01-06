@@ -1,4 +1,4 @@
-import openai, { CHAT_MODEL, MAX_TOKENS, TEMPERATURE } from '../openai/client';
+import { chatModel, CHAT_MODEL, MAX_TOKENS, TEMPERATURE } from '../openai/client';
 import { searchDocuments, SearchResult } from './vector-store';
 import { createServerClient } from '../supabase/client';
 import { ChatMessageInsert } from '../supabase/database.types';
@@ -155,27 +155,26 @@ ${query}`,
   });
 
   // Step 3: GENERATE - Get answer from LLM
-  const completion = await openai.chat.completions.create({
-    model: CHAT_MODEL,
-    messages: messages.map(msg => ({
-      role: msg.role,
-      content: msg.content,
-    })),
-    max_tokens: MAX_TOKENS,
-    temperature: TEMPERATURE,
-  });
+  const prompt = `${SYSTEM_PROMPT}\n\nContext:\n${context}\n\nQuestion: ${query}\n\nAnswer:`;
 
-  const answer = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
+  try {
+    const result = await chatModel.generateContent(prompt);
+    const response = await result.response;
+    const answer = response.text();
 
-  // Save the conversation to history
-  await saveChatMessage(sessionId, 'user', query);
-  await saveChatMessage(sessionId, 'assistant', answer);
+    // Save the conversation to history
+    await saveChatMessage(sessionId, 'user', query);
+    await saveChatMessage(sessionId, 'assistant', answer.trim());
 
-  return {
-    answer,
-    sources: relevantDocs,
-    sessionId,
-  };
+    return {
+      answer: answer.trim(),
+      sources: relevantDocs,
+      sessionId,
+    };
+  } catch (error) {
+    console.error('Error generating chat response:', error);
+    throw new Error('Failed to generate response');
+  }
 }
 
 /**
@@ -226,28 +225,22 @@ ${query}`,
   });
 
   // Step 3: GENERATE with streaming
-  const stream = await openai.chat.completions.create({
-    model: CHAT_MODEL,
-    messages: messages.map(msg => ({
-      role: msg.role,
-      content: msg.content,
-    })),
-    max_tokens: MAX_TOKENS,
-    temperature: TEMPERATURE,
-    stream: true,
-  });
+  const prompt = `${SYSTEM_PROMPT}\n\nContext:\n${context}\n\nQuestion: ${query}\n\nAnswer:`;
 
-  let fullResponse = '';
+  try {
+    const result = await chatModel.generateContent(prompt);
+    const response = await result.response;
+    const fullResponse = response.text();
 
-  for await (const chunk of stream) {
-    const token = chunk.choices[0]?.delta?.content || '';
-    if (token) {
-      fullResponse += token;
-      yield { type: 'token', data: token };
-    }
+    // For streaming, we'll simulate it by yielding the full response
+    // Gemini doesn't support streaming in the same way as OpenAI
+    yield { type: 'token', data: fullResponse };
+
+    // Save to history
+    await saveChatMessage(sessionId, 'user', query);
+    await saveChatMessage(sessionId, 'assistant', fullResponse);
+  } catch (error) {
+    console.error('Error generating streaming response:', error);
+    throw new Error('Failed to generate response');
   }
-
-  // Save to history
-  await saveChatMessage(sessionId, 'user', query);
-  await saveChatMessage(sessionId, 'assistant', fullResponse);
 }

@@ -5,16 +5,23 @@
  * Usage: npm run seed
  */
 
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
-import OpenAI from 'openai';
+import { config } from 'dotenv';
+
+// Load environment variables from .env.local
+config({ path: '.env.local' });
 
 // Load environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const openaiApiKey = process.env.OPENAI_API_KEY!;
+const googleAiApiKey = process.env.GOOGLE_AI_API_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-const openai = new OpenAI({ apiKey: openaiApiKey });
+const googleAI = new GoogleGenerativeAI(googleAiApiKey);
+const embeddingModel = googleAI.getGenerativeModel({
+  model: process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004'
+});
 
 // Sample knowledge base documents
 const sampleDocuments = [
@@ -104,11 +111,8 @@ A complete RAG pipeline consists of two phases:
 ];
 
 async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await openai.embeddings.create({
-    model: 'text-embedding-ada-002',
-    input: text.replace(/\n/g, ' '),
-  });
-  return response.data[0].embedding;
+  const result = await embeddingModel.embedContent(text.replace(/\n/g, ' '));
+  return result.embedding.values;
 }
 
 async function seedDatabase() {
