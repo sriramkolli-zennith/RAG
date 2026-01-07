@@ -1,29 +1,27 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AzureOpenAI } from 'openai';
 
 /**
- * Google Gemini client singleton
+ * Azure OpenAI client singleton
  * Used for generating embeddings and chat completions
  */
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
+const openai = new AzureOpenAI({
+  apiKey: process.env.AZURE_OPENAI_API_KEY,
+  endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+  apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-02-01',
+});
 
-// Initialize models
-export const embeddingModel = genAI.getGenerativeModel({
-  model: process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004'
-});
-export const chatModel = genAI.getGenerativeModel({
-  model: process.env.GEMINI_CHAT_MODEL || 'gemini-1.5-pro-latest'
-});
+export default openai;
 
 /**
  * Configuration for embedding generation
- * text-embedding-004 produces 768-dimensional vectors
+ * text-embedding-ada-002 produces 1536-dimensional vectors
  */
-export const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004';
-export const EMBEDDING_DIMENSIONS = 768;
+export const EMBEDDING_MODEL = process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || 'text-embedding-ada-002';
+export const EMBEDDING_DIMENSIONS = 1536;
 
 /**
  * Configuration for chat completion
  */
-export const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL || 'gemini-1.5-pro-latest';
+export const CHAT_MODEL = process.env.AZURE_OPENAI_CHAT_DEPLOYMENT || 'gpt-4o-mini';
 export const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '1000');
 export const TEMPERATURE = parseFloat(process.env.TEMPERATURE || '0.7');

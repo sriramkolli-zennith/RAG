@@ -1,4 +1,4 @@
-import { embeddingModel, EMBEDDING_MODEL } from './client';
+import openai, { EMBEDDING_MODEL } from './client';
 
 /**
  * Embedding Service
@@ -14,11 +14,11 @@ import { embeddingModel, EMBEDDING_MODEL } from './client';
  * Generate an embedding vector for a single piece of text
  *
  * @param text - The text to convert to an embedding
- * @returns A 768-dimensional vector representing the text's semantic meaning
+ * @returns A 1536-dimensional vector representing the text's semantic meaning
  *
  * How it works:
- * 1. The text is sent to Google's embedding model
- * 2. The model processes the text and returns a vector of 768 numbers
+ * 1. The text is sent to Azure OpenAI's embedding model
+ * 2. The model processes the text and returns a vector of 1536 numbers
  * 3. These numbers encode the semantic meaning of the text
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
@@ -29,8 +29,12 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     throw new Error('Cannot generate embedding for empty text');
   }
 
-  const result = await embeddingModel.embedContent(cleanedText);
-  return result.embedding.values;
+  const response = await openai.embeddings.create({
+    model: EMBEDDING_MODEL,
+    input: cleanedText,
+  });
+
+  return response.data[0].embedding;
 }
 
 /**
@@ -43,14 +47,14 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
   const cleanedTexts = texts.map(text => text.replace(/\n/g, ' ').trim());
 
-  const results = await Promise.all(
-    cleanedTexts.map(async (text) => {
-      const result = await embeddingModel.embedContent(text);
-      return result.embedding.values;
-    })
-  );
+  const response = await openai.embeddings.create({
+    model: EMBEDDING_MODEL,
+    input: cleanedTexts,
+  });
 
-  return results;
+  // Extract embeddings from response
+  const embeddings = response.data.map(item => item.embedding);
+  return embeddings;
 }
 
 /**
