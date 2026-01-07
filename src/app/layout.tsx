@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { Header } from '@/components/Header';
 
 export const metadata: Metadata = {
   title: 'RAG Chatbase Agent',
@@ -13,7 +14,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-gray-50 min-h-screen">{children}</body>
+      <body className="bg-black min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 overflow-hidden">
+          {children}
+        </main>
+      </body>
     </html>
   );
 }

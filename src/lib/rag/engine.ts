@@ -31,17 +31,18 @@ export interface ConversationMessage {
  * The system prompt instructs the LLM how to behave
  * This is crucial for consistent, high-quality responses
  */
-const SYSTEM_PROMPT = `You are a helpful AI assistant that answers questions based on the provided context.
+const SYSTEM_PROMPT = `You are a knowledge base assistant. You MUST answer ONLY based on the provided context.
 
-IMPORTANT RULES:
-1. Only answer based on the provided context
-2. If the context doesn't contain enough information to answer, say so honestly
-3. Be concise but thorough
-4. If you reference information from the context, be specific
-5. Don't make up information that isn't in the context
-6. Use a friendly, professional tone
+CRITICAL RULES:
+1. Answer EXCLUSIVELY using information from the provided documents
+2. If context doesn't sufficiently answer the question, explicitly say: "I don't have enough information in my knowledge base to answer this."
+3. Always cite which document(s) you're referencing
+4. Do NOT infer, assume, or add external knowledge
+5. Be precise and specific - quote relevant passages when helpful
+6. If multiple documents discuss the topic, synthesize them
+7. Never apologize for knowledge base limitations - simply state what information is available
 
-Remember: You are a knowledge base assistant. Your answers should be accurate and helpful.`;
+Your accuracy depends on strictly following these rules.`;
 
 /**
  * Format retrieved documents into context for the LLM
@@ -122,7 +123,7 @@ export async function chat(
   } = {}
 ): Promise<ChatResponse> {
   const {
-    matchThreshold = 0.7,
+    matchThreshold = 0.85,
     matchCount = 5,
     includeHistory = true,
   } = options;

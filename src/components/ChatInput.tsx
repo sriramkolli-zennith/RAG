@@ -1,64 +1,80 @@
 'use client';
 
-import { useState, KeyboardEvent } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { Send, Loader2 } from 'lucide-react';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
   const [input, setInput] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSend = () => {
-    const trimmed = input.trim();
-    if (trimmed && !disabled) {
-      onSend(trimmed);
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
+    }
+  }, [input]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || disabled || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      onSend(input.trim());
       setInput('');
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleSubmit(e as any);
     }
   };
 
   return (
-    <div className="flex items-end space-x-3">
-      <div className="flex-1 relative">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-          placeholder="Ask a question about the knowledge base..."
-          rows={1}
-          className="w-full resize-none rounded-xl border border-gray-300 px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-          style={{ minHeight: '48px', maxHeight: '120px' }}
-        />
-      </div>
-      <button
-        onClick={handleSend}
-        disabled={disabled || !input.trim()}
-        className="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          stroke="currentColor"
-          className="w-5 h-5"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
+    <form onSubmit={handleSubmit} className="space-y-2">
+      <div className="relative flex gap-3 items-end">
+        <div className="flex-1">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask me anything... (Shift+Enter for new line)"
+            disabled={disabled || isSubmitting}
+            className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-slate-700 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed max-h-32"
+            rows={1}
           />
-        </svg>
-      </button>
-    </div>
+        </div>
+        <button
+          type="submit"
+          disabled={!input.trim() || disabled || isSubmitting}
+          className="p-3 bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg active:scale-95 border border-slate-800"
+          title="Send message (Enter)"
+        >
+          {isSubmitting ? (
+            <Loader2 size={20} className="animate-spin text-slate-400" />
+          ) : (
+            <Send size={20} />
+          )}
+        </button>
+      </div>
+      <p className="text-xs text-slate-600 text-center">
+        Press <kbd className="px-2 py-1 bg-slate-900 rounded text-slate-500 border border-slate-800">Enter</kbd> to send • <kbd className="px-2 py-1 bg-slate-900 rounded text-slate-500 border border-slate-800">Shift+Enter</kbd> for new line
+      </p>
+    </form>
   );
 }

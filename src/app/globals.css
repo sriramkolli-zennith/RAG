@@ -3,39 +3,26 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 249, 250, 251;
+  --foreground-rgb: 255, 255, 255;
+  --background-rgb: 0, 0, 0;
+  color-scheme: dark;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+html {
+  scroll-behavior: smooth;
 }
 
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
-}
-
-/* Message animations */
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -43,11 +30,28 @@ body {
   }
 }
 
-.message-enter {
-  animation: fadeIn 0.3s ease-out;
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-/* Typing indicator */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -57,34 +61,70 @@ body {
   }
 }
 
-.typing-dot {
-  animation: pulse 1.5s ease-in-out infinite;
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
 }
 
-.typing-dot:nth-child(2) {
-  animation-delay: 0.2s;
+.animate-slideInLeft {
+  animation: slideInLeft 0.3s ease-out;
 }
 
-.typing-dot:nth-child(3) {
-  animation-delay: 0.4s;
+.animate-slideInRight {
+  animation: slideInRight 0.3s ease-out;
 }
 
-/* Markdown styles */
+.message-enter {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(64, 64, 64, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 100, 0.7);
+}
+
+/* Markdown styles for dark theme */
+.prose {
+  --prose-body: #e2e8f0;
+  --prose-headings: #f8fafc;
+  --prose-code: #cbd5e1;
+  --prose-pre-bg: #0f172a;
+  --prose-invert-body: #e2e8f0;
+  --prose-invert-headings: #f8fafc;
+  --prose-invert-links: #a78bfa;
+}
+
 .prose pre {
-  background-color: #1e293b;
+  background-color: #0f172a;
   border-radius: 0.5rem;
   padding: 1rem;
   overflow-x: auto;
+  border: 1px solid #1e293b;
 }
 
 .prose code {
-  background-color: #e2e8f0;
-  padding: 0.125rem 0.25rem;
+  background-color: #1e293b;
+  color: #cbd5e1;
+  padding: 0.2rem 0.4rem;
   border-radius: 0.25rem;
   font-size: 0.875rem;
 }
 
 .prose pre code {
   background-color: transparent;
+  color: inherit;
   padding: 0;
 }

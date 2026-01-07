@@ -27,8 +27,8 @@ export interface ChunkOptions {
 }
 
 const DEFAULT_OPTIONS: ChunkOptions = {
-  chunkSize: 1000,
-  chunkOverlap: 200,
+  chunkSize: 2000,
+  chunkOverlap: 400,
 };
 
 /**
