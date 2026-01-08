@@ -8,6 +8,11 @@ export const logger = {
       console.log(`[INFO] ${msg || ''}`, data);
     }
   },
+  warn: (data: any, msg?: string) => {
+    if (isDevelopment) {
+      console.warn(`[WARN] ${msg || ''}`, data);
+    }
+  },
   error: (data: any, msg?: string) => {
     console.error(`[ERROR] ${msg || ''}`, data);
   },

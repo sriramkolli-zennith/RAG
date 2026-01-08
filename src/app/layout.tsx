@@ -3,8 +3,8 @@ import './globals.css';
 import { Header } from '@/components/Header';
 
 export const metadata: Metadata = {
-  title: 'RAG Chatbase Agent',
-  description: 'AI-powered chatbot with knowledge base using RAG and Vector DB',
+  title: 'RAG Assistant - Intelligent Knowledge Base',
+  description: 'AI-powered chatbot with advanced RAG (Retrieval-Augmented Generation) using Vector DB and semantic search',
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-black min-h-screen flex flex-col">
+      <body className="min-h-screen flex flex-col antialiased">
         <Header />
         <main className="flex-1 overflow-hidden">
           {children}

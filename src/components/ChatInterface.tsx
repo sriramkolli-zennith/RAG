@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
@@ -18,19 +18,22 @@ interface Message {
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
-  const [sessionId] = useState(() => uuidv4());
+  const sessionIdRef = useRef(uuidv4()); // Use ref to avoid recreating
   const [conversationId, setConversationId] = useState<string>();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [conversationTitle, setConversationTitle] = useState('New Chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to latest message
+  // Auto-scroll to latest message (debounced)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+    return () => clearTimeout(timer);
   }, [messages]);
 
-  // Load conversation messages
-  const loadConversationMessages = async (convId: string) => {
+  // Load conversation messages with memoization
+  const loadConversationMessages = useCallback(async (convId: string) => {
     try {
       const response = await fetch(`/api/conversations/${convId}/messages`);
       const data = await response.json();
@@ -48,14 +51,14 @@ export default function ChatInterface() {
     } catch (error) {
       console.error('Failed to load messages:', error);
     }
-  };
+  }, []);
 
-  const handleSelectConversation = (convId: string) => {
+  const handleSelectConversation = useCallback((convId: string) => {
     setConversationId(convId);
     loadConversationMessages(convId);
-  };
+  }, [loadConversationMessages]);
 
-  const handleNewConversation = async () => {
+  const handleNewConversation = useCallback(async () => {
     try {
       const title = `Chat ${new Date().toLocaleDateString()}`;
       const response = await fetch('/api/conversations', {
@@ -75,12 +78,12 @@ export default function ChatInterface() {
     } catch (error) {
       console.error('Failed to create conversation:', error);
     }
-  };
+  }, []);
 
-  const handleSendMessage = async (message: string) => {
+  const handleSendMessage = useCallback(async (message: string) => {
     if (!message.trim()) return;
 
-    // Track message sent
+    // Track message sent (fire and forget)
     fetch('/api/analytics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -122,8 +125,9 @@ export default function ChatInterface() {
     setMessages(prev => [...prev, userMessage]);
 
     // Add loading message
+    const loadingMessageId = uuidv4();
     const loadingMessage: Message = {
-      id: uuidv4(),
+      id: loadingMessageId,
       content: 'Thinking...',
       role: 'assistant',
     };
@@ -136,7 +140,7 @@ export default function ChatInterface() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message,
-          sessionId,
+          sessionId: sessionIdRef.current,
           conversationId: convId,
           options: {
             matchThreshold: 0.85,
@@ -149,41 +153,50 @@ export default function ChatInterface() {
 
       if (data.success) {
         // Replace loading message with actual response
-        setMessages(prev => [
-          ...prev.slice(0, -1),
-          {
-            id: uuidv4(),
-            content: data.data.answer,
-            role: 'assistant',
-            sources: data.data.sources,
-          },
-        ]);
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === loadingMessageId 
+              ? {
+                  id: uuidv4(),
+                  content: data.data.answer,
+                  role: 'assistant' as const,
+                  sources: data.data.sources,
+                }
+              : msg
+          )
+        );
       } else {
-        setMessages(prev => [
-          ...prev.slice(0, -1),
-          {
-            id: uuidv4(),
-            content: `Error: ${data.error}`,
-            role: 'assistant',
-          },
-        ]);
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === loadingMessageId 
+              ? {
+                  id: uuidv4(),
+                  content: `Error: ${data.error}`,
+                  role: 'assistant' as const,
+                }
+              : msg
+          )
+        );
       }
     } catch (error) {
       console.error('Failed to send message:', error);
-      setMessages(prev => [
-        ...prev.slice(0, -1),
-        {
-          id: uuidv4(),
-          content: 'Failed to get response. Please try again.',
-          role: 'assistant',
-        },
-      ]);
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === loadingMessageId 
+            ? {
+                id: uuidv4(),
+                content: 'Failed to get response. Please try again.',
+                role: 'assistant' as const,
+              }
+            : msg
+        )
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [conversationId]);
 
-  const handleRegenerateResponse = async (messageId: string) => {
+  const handleRegenerateResponse = useCallback(async (messageId: string) => {
     if (!conversationId) return;
 
     setLoading(true);
@@ -194,7 +207,7 @@ export default function ChatInterface() {
         body: JSON.stringify({
           messageId,
           conversationId,
-          sessionId,
+          sessionId: sessionIdRef.current,
         }),
       });
 
@@ -217,15 +230,15 @@ export default function ChatInterface() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [conversationId]);
 
   return (
-    <div className="flex h-[calc(100vh-60px)] bg-black">
+    <div className="flex h-[calc(100vh-80px)]">
       {/* Sidebar */}
       <div
         className={`fixed md:relative z-40 h-full transition-all duration-300 ${
-          sidebarOpen ? 'w-64' : 'w-0'
-        } bg-slate-950 border-r border-slate-800 shadow-2xl`}
+          sidebarOpen ? 'w-72' : 'w-0'
+        } bg-slate-950/50 backdrop-blur-xl border-r border-slate-800/50 shadow-2xl`}
       >
         <ConversationList
           currentConversationId={conversationId}
@@ -241,35 +254,40 @@ export default function ChatInterface() {
       {/* Overlay when sidebar open on mobile */}
       {sidebarOpen && (
         <div
-          className="fixed md:hidden inset-0 bg-black/40 z-30"
+          className="fixed md:hidden inset-0 bg-black/60 backdrop-blur-sm z-30"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Main chat area */}
-      <div className="flex-1 flex flex-col bg-black relative">
+      <div className="flex-1 flex flex-col relative">
         {/* Mobile header with sidebar toggle */}
-        <div className="md:hidden border-b border-slate-800 px-4 py-3 flex items-center gap-2 bg-black">
+        <div className="md:hidden border-b border-slate-800/50 px-4 py-3 flex items-center gap-3 bg-slate-950/80 backdrop-blur-xl">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-slate-900 rounded-lg transition-all duration-200 text-slate-400 hover:text-white"
+            className="p-2 hover:bg-slate-800/60 rounded-lg transition-all duration-200 text-slate-400 hover:text-white"
             title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <h2 className="text-sm font-semibold text-white flex-1">{conversationTitle}</h2>
+          <h2 className="text-sm font-semibold text-white flex-1 truncate">{conversationTitle}</h2>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8 space-y-6 scroll-smooth">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-900 mb-6 border border-slate-800">
-                  <Send size={32} className="text-slate-600" />
+              <div className="text-center max-w-md">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-600/20 mb-6 border border-blue-500/30 shadow-lg shadow-blue-500/10">
+                  <Send size={36} className="text-blue-400" />
                 </div>
-                <h2 className="text-2xl font-semibold text-white mb-2">Start a Conversation</h2>
-                <p className="text-slate-500 max-w-sm text-sm">Ask me anything about your documents and knowledge base</p>
+                <h2 className="text-3xl font-bold text-white mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  Start a Conversation
+                </h2>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Ask me anything about your documents and knowledge base. 
+                  I'll provide accurate answers based on your data.
+                </p>
               </div>
             </div>
           ) : (
@@ -286,7 +304,7 @@ export default function ChatInterface() {
         </div>
 
         {/* Input */}
-        <div className="border-t border-slate-800 px-4 md:px-8 py-6 bg-black shadow-lg">
+        <div className="border-t border-slate-800/50 px-4 md:px-8 py-6 bg-slate-950/30 backdrop-blur-xl">
           <ChatInput
             onSend={handleSendMessage}
             disabled={loading}

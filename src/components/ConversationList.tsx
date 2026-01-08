@@ -79,12 +79,12 @@ export default function ConversationList({
   };
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 border-r border-gray-200 dark:border-gray-700">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-b border-slate-700/50">
         <button
           onClick={onNewConversation}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-medium transition-all shadow-lg shadow-blue-500/20"
         >
           <Plus size={20} />
           New Chat
@@ -92,13 +92,13 @@ export default function ConversationList({
       </div>
 
       {/* Toggle */}
-      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+      <div className="px-4 py-3 border-b border-slate-700/50 bg-slate-900/30">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 font-medium"
+          className="flex items-center gap-2 text-sm text-slate-300 hover:text-white font-semibold transition-all duration-200 hover:gap-2.5"
         >
-          <ChevronDown size={16} className={`transition-transform ${isOpen ? '' : '-rotate-90'}`} />
-          Conversations
+          <ChevronDown size={16} className={`transition-transform duration-300 ${isOpen ? '' : '-rotate-90'}`} />
+          Recent Conversations
         </button>
       </div>
 
@@ -106,11 +106,11 @@ export default function ConversationList({
       {isOpen && (
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-16 text-gray-500 dark:text-gray-400">
-              Loading...
+            <div className="flex items-center justify-center h-16 text-slate-400">
+              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : conversations.length === 0 ? (
-            <div className="flex items-center justify-center h-16 text-gray-500 dark:text-gray-400 text-sm">
+            <div className="flex items-center justify-center h-16 text-slate-500 text-sm">
               No conversations yet
             </div>
           ) : (
@@ -118,31 +118,33 @@ export default function ConversationList({
               {conversations.map(conv => (
                 <div
                   key={conv.id}
-                  className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                  className={`group relative flex items-center justify-between gap-2 px-3.5 py-3 rounded-xl cursor-pointer transition-all duration-300 ${
                     currentConversationId === conv.id
-                      ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
-                      : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                      ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/40 text-white shadow-md'
+                      : 'hover:bg-gradient-to-r hover:from-slate-800/80 hover:to-slate-700/60 text-slate-300 border border-slate-700/30 hover:border-slate-600/50 hover:shadow-sm'
                   }`}
                   onClick={() => onSelectConversation(conv.id)}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate text-sm">{conv.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="font-medium truncate text-sm leading-snug">{conv.title}</p>
+                    <p className={`text-xs mt-0.5 ${
+                      currentConversationId === conv.id ? 'text-blue-300/70' : 'text-slate-500'
+                    }`}>
                       {formatDate(conv.updated_at)}
                     </p>
                   </div>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                  <div className="opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-1.5 items-center">
                     <ExportButton 
                       conversationId={conv.id} 
                       format="markdown"
-                      className="!p-1 !bg-transparent hover:!bg-gray-300 dark:hover:!bg-gray-600 !text-gray-600 dark:!text-gray-400"
+                      className="!p-1.5 !bg-slate-700/80 hover:!bg-slate-600 !text-slate-300 hover:!text-white !border-slate-600/50 hover:!border-slate-500 !rounded-lg !transition-all"
                     />
                     <button
                       onClick={e => {
                         e.stopPropagation();
                         handleDelete(conv.id);
                       }}
-                      className="p-1 hover:bg-red-200 dark:hover:bg-red-900 rounded text-red-600 dark:text-red-400"
+                      className="p-1.5 hover:bg-red-500/30 rounded-lg text-red-400 hover:text-red-300 border border-transparent hover:border-red-400/40 transition-all duration-200"
                     >
                       <Trash2 size={14} />
                     </button>

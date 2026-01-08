@@ -1,4 +1,6 @@
 import openai, { EMBEDDING_MODEL } from './client';
+import { embeddingCache } from '../cache';
+import crypto from 'crypto';
 
 /**
  * Embedding Service
@@ -11,15 +13,25 @@ import openai, { EMBEDDING_MODEL } from './client';
  */
 
 /**
+ * Generate a cache key for text
+ */
+function getCacheKey(text: string): string {
+  return crypto.createHash('md5').update(text).digest('hex');
+}
+
+/**
  * Generate an embedding vector for a single piece of text
+ * Now with caching to avoid redundant API calls
  *
  * @param text - The text to convert to an embedding
  * @returns A 1536-dimensional vector representing the text's semantic meaning
  *
  * How it works:
- * 1. The text is sent to Azure OpenAI's embedding model
- * 2. The model processes the text and returns a vector of 1536 numbers
- * 3. These numbers encode the semantic meaning of the text
+ * 1. Check cache for existing embedding
+ * 2. If not cached, send text to Azure OpenAI's embedding model
+ * 3. The model processes the text and returns a vector of 1536 numbers
+ * 4. These numbers encode the semantic meaning of the text
+ * 5. Cache the result for future use
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   // Clean and prepare the text
@@ -29,32 +41,72 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     throw new Error('Cannot generate embedding for empty text');
   }
 
+  // Check cache first
+  const cacheKey = getCacheKey(cleanedText);
+  const cached = embeddingCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const response = await openai.embeddings.create({
     model: EMBEDDING_MODEL,
     input: cleanedText,
   });
 
-  return response.data[0].embedding;
+  const embedding = response.data[0].embedding;
+  
+  // Cache for 24 hours (embeddings don't change)
+  embeddingCache.set(cacheKey, embedding, 86400);
+  
+  return embedding;
 }
 
 /**
  * Generate embeddings for multiple texts in a batch
  * More efficient than calling generateEmbedding multiple times
+ * Now with batch caching support
  *
  * @param texts - Array of texts to convert to embeddings
  * @returns Array of embedding vectors
  */
 export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
   const cleanedTexts = texts.map(text => text.replace(/\n/g, ' ').trim());
-
-  const response = await openai.embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: cleanedTexts,
+  
+  // Check cache and separate cached vs uncached
+  const results: (number[] | null)[] = new Array(cleanedTexts.length).fill(null);
+  const uncachedIndices: number[] = [];
+  const uncachedTexts: string[] = [];
+  
+  cleanedTexts.forEach((text, index) => {
+    const cacheKey = getCacheKey(text);
+    const cached = embeddingCache.get(cacheKey);
+    if (cached) {
+      results[index] = cached;
+    } else {
+      uncachedIndices.push(index);
+      uncachedTexts.push(text);
+    }
   });
+  
+  // Fetch uncached embeddings in batch
+  if (uncachedTexts.length > 0) {
+    const response = await openai.embeddings.create({
+      model: EMBEDDING_MODEL,
+      input: uncachedTexts,
+    });
 
-  // Extract embeddings from response
-  const embeddings = response.data.map(item => item.embedding);
-  return embeddings;
+    response.data.forEach((item, i) => {
+      const embedding = item.embedding;
+      const originalIndex = uncachedIndices[i];
+      results[originalIndex] = embedding;
+      
+      // Cache each new embedding for 24 hours
+      const cacheKey = getCacheKey(uncachedTexts[i]);
+      embeddingCache.set(cacheKey, embedding, 86400);
+    });
+  }
+
+  return results as number[][];
 }
 
 /**

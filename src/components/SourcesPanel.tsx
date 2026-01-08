@@ -47,10 +47,10 @@ export function SourcesPanel({ sources, isOpen, onClose }: SourcesPanelProps) {
             return (
               <div
                 key={source.id}
-                className=\"bg-slate-800 border border-slate-700 rounded-lg p-4 hover:border-slate-600 transition-all duration-150 hover:shadow-lg\"
+                className="bg-slate-800 border border-slate-700 rounded-lg p-4 hover:border-slate-600 transition-all duration-150 hover:shadow-lg"
               >
-                <div className=\"flex items-center justify-between mb-2\">
-                  <span className=\"text-xs font-medium text-slate-400\">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-slate-400">
                     Source {index + 1}
                   </span>
                   <span className={`text-xs font-bold px-2 py-1 rounded-full bg-gradient-to-r ${getQualityColor()}`}>
@@ -59,12 +59,12 @@ export function SourcesPanel({ sources, isOpen, onClose }: SourcesPanelProps) {
                 </div>
                 
                 {typeof source.metadata?.source === 'string' && (
-                  <p className=\"text-sm text-cyan-400 mb-2 font-semibold truncate\">
+                  <p className="text-sm text-cyan-400 mb-2 font-semibold truncate">
                     📄 {source.metadata.source}
                   </p>
                 )}
                 
-                <p className=\"text-xs text-slate-300 leading-relaxed line-clamp-4 whitespace-pre-wrap\">
+                <p className="text-xs text-slate-300 leading-relaxed line-clamp-4 whitespace-pre-wrap">
                   {source.content}
                 </p>
               </div>

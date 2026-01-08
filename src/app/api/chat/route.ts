@@ -45,59 +45,63 @@ export async function POST(request: NextRequest) {
       options,
     });
 
-    // Build message history if conversation exists
+    // Build message history if conversation exists (in parallel with RAG)
     let messageHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-    if (conversationId) {
-      const { data: messages, error: messagesError } = await supabase
-        .from('messages')
-        .select('role, content')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true })
-        .limit(10); // Last 10 messages for context
+    const historyPromise = conversationId ? supabase
+      .from('messages')
+      .select('role, content')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true })
+      .limit(10) // Last 10 messages for context
+      : Promise.resolve({ data: null, error: null });
 
-      if (!messagesError && messages) {
-        messageHistory = messages as Array<{ role: 'user' | 'assistant'; content: string }>;
-        logRagOperation('loaded_message_history', {
-          conversationId,
-          historyCount: messages.length,
-        });
-      }
+    // Get RAG-powered response (start in parallel with history fetch)
+    const [historyResult, response] = await Promise.all([
+      historyPromise,
+      chat(message, sessionId, {
+        matchThreshold: options.matchThreshold ?? 0.85,
+        matchCount: options.matchCount ?? 5,
+        includeHistory: options.includeHistory ?? true,
+      })
+    ]);
+
+    if (!historyResult.error && historyResult.data) {
+      messageHistory = historyResult.data as Array<{ role: 'user' | 'assistant'; content: string }>;
+      logRagOperation('loaded_message_history', {
+        conversationId,
+        historyCount: historyResult.data.length,
+      });
     }
 
-    // Get RAG-powered response with context
-    const response = await chat(message, sessionId, {
-      matchThreshold: options.matchThreshold ?? 0.85,
-      matchCount: options.matchCount ?? 5,
-      includeHistory: options.includeHistory ?? true,
-    });
-
-    // Save user message to conversation if conversationId provided
+    // Save messages in batch if conversationId provided (fire and forget for better latency)
     if (conversationId) {
-      await supabase.from('messages').insert({
-        conversation_id: conversationId,
-        role: 'user',
-        content: message,
-        sources: [],
-      });
-
-      // Save assistant response
-      await supabase.from('messages').insert({
-        conversation_id: conversationId,
-        role: 'assistant',
-        content: response.answer,
-        sources: response.sources.map(s => ({
-          id: s.id,
-          content: s.content.substring(0, 200),
-          metadata: s.metadata,
-          similarity: s.similarity,
-        })),
-      });
-
-      // Update conversation's updated_at
-      await supabase
-        .from('conversations')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', conversationId);
+      const now = new Date().toISOString();
+      // Batch insert both messages and update conversation in parallel
+      Promise.all([
+        supabase.from('messages').insert([
+          {
+            conversation_id: conversationId,
+            role: 'user',
+            content: message,
+            sources: [],
+          },
+          {
+            conversation_id: conversationId,
+            role: 'assistant',
+            content: response.answer,
+            sources: response.sources.map(s => ({
+              id: s.id,
+              content: s.content.substring(0, 200),
+              metadata: s.metadata,
+              similarity: s.similarity,
+            })),
+          }
+        ]),
+        supabase
+          .from('conversations')
+          .update({ updated_at: now })
+          .eq('id', conversationId)
+      ]).catch(err => logger.error(err, 'Failed to save messages'));
     }
 
     const duration = Date.now() - startTime;

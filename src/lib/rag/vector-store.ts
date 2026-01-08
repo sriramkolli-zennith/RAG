@@ -64,21 +64,44 @@ export async function addDocument(
 
 /**
  * Add multiple documents to the vector store
- * Uses batch processing for efficiency
+ * Uses optimized batch processing with parallel embedding generation
  */
 export async function addDocuments(
   documents: Array<{ content: string; metadata?: Record<string, unknown> }>
 ): Promise<Document[]> {
-  const results: Document[] = [];
+  const supabase = createServerClient();
   
   // Process in batches to avoid rate limits
   const batchSize = 10;
+  const results: Document[] = [];
+  
   for (let i = 0; i < documents.length; i += batchSize) {
     const batch = documents.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map(doc => addDocument(doc.content, doc.metadata || {}))
+    
+    // Generate all embeddings in parallel for the batch
+    const embeddings = await Promise.all(
+      batch.map(doc => generateEmbedding(doc.content))
     );
-    results.push(...batchResults);
+    
+    // Insert all documents in a single batch operation
+    const inserts = batch.map((doc, idx) => ({
+      content: doc.content,
+      metadata: doc.metadata || {},
+      embedding: embeddings[idx] as any,
+    }));
+    
+    const { data, error } = (await supabase
+      .from('documents')
+      .insert(inserts)
+      .select()) as { data: Document[] | null; error: any };
+    
+    if (error) {
+      throw new Error(`Failed to add documents: ${error.message}`);
+    }
+    
+    if (data) {
+      results.push(...data);
+    }
   }
   
   return results;
