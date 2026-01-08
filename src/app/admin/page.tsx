@@ -125,9 +125,9 @@ export default function AdminPage() {
         {/* Analytics Section */}
         {!analyticsLoading && analytics && (
           <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-gradient-to-br from-blue-600/20 to-blue-700/20 rounded-xl shadow-xl p-6 border border-blue-500/30 backdrop-blur-sm">
-              <h3 className="text-sm font-medium text-blue-400 mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
+            <div className="bg-gradient-to-br from-black/20 to-gray-900/20 rounded-xl shadow-xl p-6 border border-gray-500/30 backdrop-blur-sm">
+              <h3 className="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
                 Conversations ({analytics.period})
               </h3>
               <p className="text-4xl font-bold text-white mb-2">
@@ -219,7 +219,7 @@ export default function AdminPage() {
             <button
               onClick={handleAddDocument}
               disabled={isAdding}
-              className="px-6 py-2.5 text-sm font-medium bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-500 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/30"
+              className="px-6 py-2.5 text-sm font-medium bg-gradient-to-r from-black to-gray-900 text-white rounded-lg hover:from-gray-900 hover:to-black disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-black/30"
             >
               {isAdding ? 'Adding...' : 'Add Document'}
             </button>

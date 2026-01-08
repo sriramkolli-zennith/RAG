@@ -7,12 +7,14 @@ interface ExportButtonProps {
   conversationId: string;
   format?: 'json' | 'markdown';
   className?: string;
+  showText?: boolean;
 }
 
 export default function ExportButton({ 
   conversationId, 
   format = 'markdown',
-  className = '' 
+  className = '',
+  showText = true
 }: ExportButtonProps) {
   const handleExport = useCallback(async () => {
     try {
@@ -45,7 +47,7 @@ export default function ExportButton({
       className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors ${className}`}
     >
       <Download size={16} />
-      Export {format === 'json' ? 'JSON' : 'Markdown'}
+      {showText && `Export ${format === 'json' ? 'JSON' : 'Markdown'}`}
     </button>
   );
 }

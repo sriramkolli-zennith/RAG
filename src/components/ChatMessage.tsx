@@ -52,7 +52,7 @@ function ChatMessageComponent({ message, onViewSources, onRegenerate, isLoading 
       <div
         className={`max-w-3xl rounded-2xl p-4 ${
           isUser
-            ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20 border border-blue-500/30'
+            ? 'bg-gradient-to-br from-black to-gray-900 text-white shadow-lg shadow-black/20 border border-gray-500/30'
             : 'bg-slate-900/60 backdrop-blur-sm text-slate-100 border border-slate-700/50 shadow-xl'
         }`}
       >

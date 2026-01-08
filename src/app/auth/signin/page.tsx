@@ -40,8 +40,8 @@ export default function SignInPage() {
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-slate-900/60 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-slate-700/50">
         <div className="text-center mb-8">
-          <div className="inline-flex p-4 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-2xl mb-4 border border-blue-500/30 shadow-lg shadow-blue-500/10">
-            <LogIn size={36} className="text-blue-400" />
+          <div className="inline-flex p-4 bg-gradient-to-br from-black/20 to-gray-900/20 rounded-2xl mb-4 border border-gray-500/30 shadow-lg shadow-black/10">
+            <LogIn size={36} className="text-gray-400" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">
             Welcome Back
@@ -89,7 +89,7 @@ export default function SignInPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-medium py-3 px-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50"
+            className="w-full bg-gradient-to-r from-black to-gray-900 hover:from-gray-900 hover:to-black text-white font-medium py-3 px-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-black/30 hover:shadow-black/50"
           >
             {loading ? (
               <>

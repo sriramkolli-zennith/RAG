@@ -11,11 +11,11 @@ export function Header() {
 
           {/* Logo + Name → Home */}
           <Link href="/" className="flex items-center gap-3 cursor-pointer group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl font-bold shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/50 transition-all duration-300 group-hover:scale-105">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-black to-gray-900 flex items-center justify-center text-xl font-bold shadow-lg shadow-black/30 group-hover:shadow-black/50 transition-all duration-300 group-hover:scale-105">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">
+              <h1 className="text-lg font-bold text-white group-hover:text-gray-400 transition-colors">
                 RAG Assistant
               </h1>
               <p className="text-[10px] text-slate-400 -mt-0.5">Intelligent Knowledge Base</p>

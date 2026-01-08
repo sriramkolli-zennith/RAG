@@ -72,7 +72,7 @@ export default function DocumentUpload({ onUploadComplete }: DocumentUploadProps
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-medium transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50"
+        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-black to-gray-900 hover:from-gray-900 hover:to-black text-white font-medium transition-all shadow-lg shadow-black/30 hover:shadow-black/50"
       >
         <Upload size={20} />
         Upload Documents
@@ -160,7 +160,7 @@ export default function DocumentUpload({ onUploadComplete }: DocumentUploadProps
                 <div className="space-y-3">
                   <div className="w-full bg-slate-800/60 rounded-full h-2.5 border border-slate-700/50">
                     <div
-                      className="bg-gradient-to-r from-blue-600 to-blue-500 h-2.5 rounded-full transition-all duration-300 shadow-lg shadow-blue-500/30"
+                      className="bg-gradient-to-r from-black to-gray-900 h-2.5 rounded-full transition-all duration-300 shadow-lg shadow-black/30"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
@@ -182,7 +182,7 @@ export default function DocumentUpload({ onUploadComplete }: DocumentUploadProps
                 <button
                   onClick={handleUpload}
                   disabled={files.length === 0 || uploading}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/30 font-medium"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-black to-gray-900 hover:from-gray-900 hover:to-black text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-black/30 font-medium"
                 >
                   {uploading ? (
                     <>

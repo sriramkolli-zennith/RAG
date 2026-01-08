@@ -62,7 +62,7 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
         <button
           type="submit"
           disabled={!input.trim() || disabled || isSubmitting}
-          className="p-3 bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 active:scale-95 border border-blue-500/30"
+          className="p-3 bg-gradient-to-br from-black to-gray-900 hover:from-gray-900 hover:to-black text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-black/30 hover:shadow-black/50 active:scale-95 border border-gray-500/30"
           title="Send message (Enter)"
         >
           {isSubmitting ? (

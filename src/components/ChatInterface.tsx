@@ -278,10 +278,10 @@ export default function ChatInterface() {
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-md">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-600/20 mb-6 border border-blue-500/30 shadow-lg shadow-blue-500/10">
-                  <Send size={36} className="text-blue-400" />
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-black/20 to-gray-900/20 mb-6 border border-gray-500/30 shadow-lg shadow-black/10">
+                  <Send size={36} className="text-gray-400" />
                 </div>
-                <h2 className="text-3xl font-bold text-white mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                <h2 className="text-3xl font-bold text-white mb-3 bg-gradient-to-r from-black to-gray-400 bg-clip-text text-transparent">
                   Start a Conversation
                 </h2>
                 <p className="text-slate-400 text-sm leading-relaxed">

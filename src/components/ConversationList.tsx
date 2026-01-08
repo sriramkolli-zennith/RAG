@@ -84,7 +84,7 @@ export default function ConversationList({
       <div className="p-4 border-b border-slate-700/50">
         <button
           onClick={onNewConversation}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-medium transition-all shadow-lg shadow-blue-500/20"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-black to-gray-900 hover:from-gray-900 hover:to-black text-white font-medium transition-all shadow-lg shadow-black/20"
         >
           <Plus size={20} />
           New Chat
@@ -120,7 +120,7 @@ export default function ConversationList({
                   key={conv.id}
                   className={`group relative flex items-center justify-between gap-2 px-3.5 py-3 rounded-xl cursor-pointer transition-all duration-300 ${
                     currentConversationId === conv.id
-                      ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/40 text-white shadow-md'
+                      ? 'bg-gradient-to-r from-black/20 to-gray-900/20 border border-gray-400/40 text-white shadow-md'
                       : 'hover:bg-gradient-to-r hover:from-slate-800/80 hover:to-slate-700/60 text-slate-300 border border-slate-700/30 hover:border-slate-600/50 hover:shadow-sm'
                   }`}
                   onClick={() => onSelectConversation(conv.id)}
@@ -137,6 +137,7 @@ export default function ConversationList({
                     <ExportButton 
                       conversationId={conv.id} 
                       format="markdown"
+                      showText={false}
                       className="!p-1.5 !bg-slate-700/80 hover:!bg-slate-600 !text-slate-300 hover:!text-white !border-slate-600/50 hover:!border-slate-500 !rounded-lg !transition-all"
                     />
                     <button

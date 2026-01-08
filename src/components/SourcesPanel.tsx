@@ -40,7 +40,7 @@ export function SourcesPanel({ sources, isOpen, onClose }: SourcesPanelProps) {
             const similarity = source.similarity || 0;
             const getQualityColor = () => {
               if (similarity >= 0.9) return 'from-emerald-500 to-teal-500 text-white';
-              if (similarity >= 0.85) return 'from-blue-500 to-cyan-500 text-white';
+              if (similarity >= 0.85) return 'from-gray-600 to-gray-500 text-white';
               return 'from-amber-500 to-orange-500 text-white';
             };
 

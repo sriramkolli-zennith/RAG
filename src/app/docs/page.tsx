@@ -38,7 +38,7 @@ export default function DocsPage() {
     <div className="flex flex-col min-h-screen">
       <main className="flex-1 p-6 max-w-6xl mx-auto w-full">
         <div className="mb-10">
-          <h1 className="text-4xl font-bold text-white mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold text-white mb-3 bg-gradient-to-r from-black to-gray-400 bg-clip-text text-transparent">
             Documentation
           </h1>
           <p className="text-base text-slate-400 leading-relaxed max-w-3xl">
