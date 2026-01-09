@@ -143,7 +143,7 @@ export default function ChatInterface() {
           sessionId: sessionIdRef.current,
           conversationId: convId,
           options: {
-            matchThreshold: 0.85,
+            matchThreshold: 0.1,
             matchCount: 5,
           },
         }),

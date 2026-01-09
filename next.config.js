@@ -1,10 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['openai'],
-  },
+  // Moved from experimental.serverComponentsExternalPackages in Next.js 16
+  serverExternalPackages: [
+    'openai',
+    '@xenova/transformers',
+    'onnxruntime-node',
+    'sharp',
+    'pdf-parse'
+  ],
+  
+  // Turbopack config (required in Next.js 16)
+  turbopack: {},
+  
   // Performance optimizations
-  swcMinify: true,
   compress: true,
   poweredByHeader: false,
   
@@ -12,36 +20,6 @@ const nextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60,
-  },
-  
-  // Webpack optimizations
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      // Reduce client bundle size
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          commons: {
-            name: 'commons',
-            chunks: 'all',
-            minChunks: 2,
-          },
-          lib: {
-            test: /[\\/]node_modules[\\/]/,
-            name(module) {
-              const packageName = module.context.match(
-                /[\\/]node_modules[\\/](.*?)([\\/]|$)/
-              )?.[1];
-              return `npm.${packageName?.replace('@', '')}`;
-            },
-            priority: 10,
-          },
-        },
-      };
-    }
-    return config;
   },
   
   // HTTP headers for better caching

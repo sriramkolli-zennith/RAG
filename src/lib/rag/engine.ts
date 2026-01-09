@@ -31,18 +31,18 @@ export interface ConversationMessage {
  * The system prompt instructs the LLM how to behave
  * This is crucial for consistent, high-quality responses
  */
-const SYSTEM_PROMPT = `You are a knowledge base assistant. You MUST answer ONLY based on the provided context.
+const SYSTEM_PROMPT = `You are a helpful knowledge base assistant. Your job is to answer questions based on the provided context from the knowledge base.
 
-CRITICAL RULES:
-1. Answer EXCLUSIVELY using information from the provided documents
-2. If context doesn't sufficiently answer the question, explicitly say: "I don't have enough information in my knowledge base to answer this."
-3. Always cite which document(s) you're referencing
-4. Do NOT infer, assume, or add external knowledge
-5. Be precise and specific - quote relevant passages when helpful
-6. If multiple documents discuss the topic, synthesize them
-7. Never apologize for knowledge base limitations - simply state what information is available
+GUIDELINES:
+1. Use the provided documents to answer questions as accurately as possible
+2. If the context contains relevant information, use it to formulate a helpful response
+3. If the documents contain partial information, share what you found and note any gaps
+4. When citing information, reference the document number (e.g., "According to Document 1...")
+5. If the context genuinely doesn't contain ANY relevant information, say: "I couldn't find information about this in the knowledge base."
+6. Be helpful and conversational while staying grounded in the provided context
+7. If information spans multiple documents, synthesize it into a coherent answer
 
-Your accuracy depends on strictly following these rules.`;
+Remember: The user has uploaded documents to this knowledge base, so try your best to find and present relevant information from the context provided.`;
 
 /**
  * Format retrieved documents into context for the LLM
@@ -123,7 +123,7 @@ export async function chat(
   } = {}
 ): Promise<ChatResponse> {
   const {
-    matchThreshold = 0.85,
+    matchThreshold = 0.1,
     matchCount = 5,
     includeHistory = true,
   } = options;
@@ -131,6 +131,16 @@ export async function chat(
   // Step 1: RETRIEVE - Find relevant documents
   const relevantDocs = await searchDocuments(query, matchThreshold, matchCount);
   const context = formatContext(relevantDocs);
+  
+  // Debug logging
+  console.log(`\n=== RAG Debug ===`);
+  console.log(`Query: "${query}"`);
+  console.log(`Found ${relevantDocs.length} documents`);
+  if (relevantDocs.length > 0) {
+    console.log(`Top document similarity: ${relevantDocs[0].similarity.toFixed(3)}`);
+    console.log(`Context preview: ${context.substring(0, 200)}...`);
+  }
+  console.log(`================\n`);
 
   // Step 2: Build the conversation with context
   const messages: ConversationMessage[] = [
@@ -198,7 +208,7 @@ export async function* streamChat(
   } = {}
 ): AsyncGenerator<{ type: 'token' | 'sources'; data: string | SearchResult[] }> {
   const {
-    matchThreshold = 0.7,
+    matchThreshold = 0.1,
     matchCount = 5,
     includeHistory = true,
   } = options;

@@ -38,45 +38,79 @@ export async function POST(request: NextRequest) {
       conversationId,
     });
 
-    // Get the message being regenerated
-    const { data: assistantMessage, error: fetchError } = await supabase
+    // First, verify the message exists and is an assistant message
+    const { data: targetMessage, error: targetError } = await supabase
       .from('messages')
       .select('*')
       .eq('id', messageId)
+      .eq('conversation_id', conversationId)
       .single();
 
-    if (fetchError || !assistantMessage) {
-      throw new Error('Message not found');
+    if (targetError || !targetMessage) {
+      logError(
+        new Error(`Target message not found: ${messageId} in conversation ${conversationId}`),
+        'message_not_found_regenerate'
+      );
+      throw new Error(`Message not found: ${messageId}`);
     }
 
-    // Find the user message that prompted this response
-    const { data: userMessage, error: userError } = await supabase
+    if (targetMessage.role !== 'assistant') {
+      throw new Error('Can only regenerate assistant messages');
+    }
+
+    // Get all messages for this conversation ordered by creation time
+    const { data: allMessages, error: fetchError } = await supabase
       .from('messages')
       .select('*')
       .eq('conversation_id', conversationId)
-      .lt('created_at', assistantMessage.created_at)
-      .eq('role', 'user')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .order('created_at', { ascending: true });
 
-    if (userError || !userMessage) {
-      throw new Error('User message not found');
+    if (fetchError) {
+      logError(fetchError, 'fetch_messages_regenerate');
+      throw new Error(`Failed to fetch messages: ${fetchError.message}`);
+    }
+
+    if (!allMessages || allMessages.length === 0) {
+      throw new Error('No messages found in conversation');
+    }
+
+    // Find the assistant message being regenerated
+    const messageIndex = allMessages.findIndex(m => m.id === messageId);
+    
+    if (messageIndex === -1) {
+      // Log available message IDs for debugging
+      const availableIds = allMessages.map(m => m.id).join(', ');
+      logError(
+        new Error(`Message ${messageId} not found. Available: ${availableIds}`),
+        'message_not_found_regenerate'
+      );
+      throw new Error(`Message not found. Searched for: ${messageId}`);
+    }
+
+    const assistantMessage = allMessages[messageIndex];
+    
+    // The assistant message should be preceded by a user message
+    // Find the most recent user message before this assistant message
+    let userMessage = null;
+    for (let i = messageIndex - 1; i >= 0; i--) {
+      if (allMessages[i].role === 'user') {
+        userMessage = allMessages[i];
+        break;
+      }
+    }
+
+    if (!userMessage) {
+      throw new Error('No user message found before this response');
     }
 
     // Load conversation history up to the user message
-    const { data: history, error: historyError } = await supabase
-      .from('messages')
-      .select('role, content')
-      .eq('conversation_id', conversationId)
-      .lt('created_at', userMessage.created_at)
-      .order('created_at', { ascending: true });
+    const historyMessages = allMessages.slice(0, messageIndex - 1);
 
-    // Generate new response (chat function loads history automatically)
+    // Generate new response
     const response = await chat(userMessage.content, sessionId, {
-      matchThreshold: options.matchThreshold ?? 0.85,
+      matchThreshold: options.matchThreshold ?? 0.5,
       matchCount: options.matchCount ?? 5,
-      includeHistory: options.includeHistory ?? true,
+      includeHistory: false, // We manage history manually here
     });
 
     // Update the message with new content

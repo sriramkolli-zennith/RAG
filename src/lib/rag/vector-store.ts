@@ -1,5 +1,5 @@
 import { createServerClient } from '../supabase/client';
-import { generateEmbedding } from '../openai/embeddings';
+import { generateEmbedding } from '../embeddings/local';
 import { Document, DocumentInsert } from '../supabase/database.types';
 
 /**
@@ -115,13 +115,16 @@ export async function addDocuments(
  * 2. Find documents with similar embeddings using cosine similarity
  * 3. Return the most relevant documents
  * 
+ * Note: Local embedding models (like all-MiniLM-L6-v2) produce lower
+ * similarity scores than OpenAI models. Use threshold of 0.1-0.3.
+ * 
  * @param query - The search query
- * @param matchThreshold - Minimum similarity score (0-1)
+ * @param matchThreshold - Minimum similarity score (0-1), default 0.1 for local models
  * @param matchCount - Maximum number of results
  */
 export async function searchDocuments(
   query: string,
-  matchThreshold: number = 0.7,
+  matchThreshold: number = 0.1,
   matchCount: number = 5
 ): Promise<SearchResult[]> {
   const supabase = createServerClient();
@@ -129,22 +132,57 @@ export async function searchDocuments(
   // Generate embedding for the query
   const queryEmbedding = await generateEmbedding(query);
   
-  // Call the PostgreSQL function for vector similarity search
-  const result: any = await supabase.rpc('match_documents', {
-    query_embedding: queryEmbedding as any,
+  console.log(`[Search] Query: "${query.substring(0, 50)}..."`);
+  console.log(`[Search] Embedding dimension: ${queryEmbedding.length}`);
+  console.log(`[Search] Threshold: ${matchThreshold}, Max results: ${matchCount}`);
+  
+  // Format embedding as PostgreSQL vector string: '[0.1, 0.2, ...]'
+  const embeddingString = `[${queryEmbedding.join(',')}]`;
+  
+  // Call RPC function - try with explicit casting
+  const { data, error } = await supabase.rpc('match_documents', {
+    query_embedding: embeddingString,
     match_threshold: matchThreshold,
     match_count: matchCount,
   });
-  
-  const { data, error } = result;
 
   if (error) {
+    console.error('[Search] Error:', error);
     throw new Error(`Search failed: ${error.message}`);
   }
 
-  if (!data) {
+  if (!data || data.length === 0) {
+    console.log(`[Search] No documents found above threshold ${matchThreshold}`);
+    
+    // Debug: Check if any documents exist at all
+    const { data: allDocs, error: allDocsError } = await supabase
+      .from('documents')
+      .select('id, embedding')
+      .limit(1);
+    
+    if (allDocsError) {
+      console.log('[Search] Error checking documents:', allDocsError);
+    } else if (allDocs && allDocs.length > 0) {
+      const firstDoc = allDocs[0];
+      const docEmbedding = firstDoc.embedding;
+      console.log(`[Search] Sample document embedding exists: ${docEmbedding ? 'Yes' : 'No'}`);
+      if (docEmbedding) {
+        // Check if it's an array and its length
+        const embArray = Array.isArray(docEmbedding) ? docEmbedding : 
+          (typeof docEmbedding === 'string' ? JSON.parse(docEmbedding) : null);
+        console.log(`[Search] Document embedding length: ${embArray ? embArray.length : 'N/A'}`);
+      }
+    } else {
+      console.log('[Search] No documents in database!');
+    }
+    
     return [];
   }
+
+  console.log(`[Search] Found ${data.length} documents`);
+  data.forEach((doc: any, i: number) => {
+    console.log(`[Search] Doc ${i+1}: similarity=${doc.similarity?.toFixed(3)}, content="${doc.content?.substring(0, 50)}..."`);
+  });
 
   return data.map((doc: any) => ({
     id: doc.id,

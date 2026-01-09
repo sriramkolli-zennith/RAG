@@ -200,6 +200,7 @@ export default function AdminPage() {
                 onChange={(e) => setNewSource(e.target.value)}
                 placeholder="e.g., Company FAQ"
                 className="w-full px-4 py-2.5 text-sm border border-slate-700/50 rounded-lg bg-slate-800/60 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                suppressHydrationWarning
               />
             </div>
             
@@ -213,6 +214,7 @@ export default function AdminPage() {
                 placeholder="Paste your content here..."
                 rows={5}
                 className="w-full px-4 py-2.5 text-sm border border-slate-700/50 rounded-lg bg-slate-800/60 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all resize-y"
+                suppressHydrationWarning
               />
             </div>
             

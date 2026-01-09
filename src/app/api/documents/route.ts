@@ -65,14 +65,18 @@ export async function POST(request: NextRequest) {
         count: documents.length,
       });
 
-      // Convert to internal format
-      const docsToAdd = documents.map(doc => ({
-        content: doc.content,
-        metadata: { source: doc.source || 'Batch Upload' },
-      }));
+      // Process and chunk each document
+      const chunkedDocuments = documents.flatMap(doc => 
+        processDocument(doc.content, { source: doc.source || 'Batch Upload' })
+      );
 
-      // Add documents
-      const results = await addDocuments(docsToAdd);
+      logRagOperation('batch_chunking_complete', {
+        originalCount: documents.length,
+        chunkedCount: chunkedDocuments.length,
+      });
+
+      // Add chunked documents
+      const results = await addDocuments(chunkedDocuments);
 
       const duration = Date.now() - startTime;
       logApiCall('POST', '/api/documents', duration);

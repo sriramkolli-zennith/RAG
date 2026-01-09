@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const [historyResult, response] = await Promise.all([
       historyPromise,
       chat(message, sessionId, {
-        matchThreshold: options.matchThreshold ?? 0.85,
+        matchThreshold: options.matchThreshold ?? 0.1,
         matchCount: options.matchCount ?? 5,
         includeHistory: options.includeHistory ?? true,
       })
@@ -73,35 +73,40 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Save messages in batch if conversationId provided (fire and forget for better latency)
+    // Save messages sequentially if conversationId provided (ensure proper ordering)
     if (conversationId) {
       const now = new Date().toISOString();
-      // Batch insert both messages and update conversation in parallel
-      Promise.all([
-        supabase.from('messages').insert([
-          {
-            conversation_id: conversationId,
-            role: 'user',
-            content: message,
-            sources: [],
-          },
-          {
-            conversation_id: conversationId,
-            role: 'assistant',
-            content: response.answer,
-            sources: response.sources.map(s => ({
-              id: s.id,
-              content: s.content.substring(0, 200),
-              metadata: s.metadata,
-              similarity: s.similarity,
-            })),
-          }
-        ]),
-        supabase
-          .from('conversations')
-          .update({ updated_at: now })
-          .eq('id', conversationId)
-      ]).catch(err => logger.error(err, 'Failed to save messages'));
+      
+      // Insert user message first
+      await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        role: 'user',
+        content: message,
+        sources: [],
+      });
+      
+      // Small delay to ensure different timestamps
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // Then insert assistant message
+      await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        role: 'assistant',
+        content: response.answer,
+        sources: response.sources.map(s => ({
+          id: s.id,
+          content: s.content.substring(0, 200),
+          metadata: s.metadata,
+          similarity: s.similarity,
+        })),
+      });
+      
+      // Update conversation timestamp (fire and forget)
+      void supabase
+        .from('conversations')
+        .update({ updated_at: now })
+        .eq('id', conversationId)
+        .then(() => {}, (err: any) => logger.error(err, 'Failed to update conversation timestamp'));
     }
 
     const duration = Date.now() - startTime;

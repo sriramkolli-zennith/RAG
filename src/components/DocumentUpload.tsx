@@ -29,20 +29,15 @@ export default function DocumentUpload({ onUploadComplete }: DocumentUploadProps
     setProgress(0);
 
     try {
-      const documents = await Promise.all(
-        files.map(async (file) => {
-          const text = await file.text();
-          return {
-            content: text,
-            source: file.name,
-          };
-        })
-      );
+      // Use FormData to send files to server for processing
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
 
-      const response = await fetch('/api/documents', {
+      const response = await fetch('/api/documents/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documents }),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -57,7 +52,7 @@ export default function DocumentUpload({ onUploadComplete }: DocumentUploadProps
         setIsOpen(false);
         setProgress(0);
         if (onUploadComplete) {
-          onUploadComplete(data.data?.count || documents.length);
+          onUploadComplete(data.data?.count || files.length);
         }
       }, 1000);
     } catch (error) {
@@ -73,6 +68,7 @@ export default function DocumentUpload({ onUploadComplete }: DocumentUploadProps
       <button
         onClick={() => setIsOpen(true)}
         className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-black to-gray-900 hover:from-gray-900 hover:to-black text-white font-medium transition-all shadow-lg shadow-black/30 hover:shadow-black/50"
+        suppressHydrationWarning
       >
         <Upload size={20} />
         Upload Documents

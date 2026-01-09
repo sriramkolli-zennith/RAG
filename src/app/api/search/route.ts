@@ -14,7 +14,7 @@ import { searchDocuments } from '@/lib/rag';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { query, matchThreshold = 0.7, matchCount = 10 } = body;
+    const { query, matchThreshold = 0.1, matchCount = 10 } = body;
 
     if (!query) {
       return NextResponse.json(

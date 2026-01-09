@@ -14,12 +14,12 @@ const supabase = createClient(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { conversationId: string } }
+  { params }: { params: Promise<{ conversationId: string }> }
 ) {
   const startTime = Date.now();
 
   try {
-    const { conversationId } = params;
+    const { conversationId } = await params;
 
     logRagOperation('get_messages_start', {
       conversationId,
@@ -69,12 +69,12 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { conversationId: string } }
+  { params }: { params: Promise<{ conversationId: string }> }
 ) {
   const startTime = Date.now();
 
   try {
-    const { conversationId } = params;
+    const { conversationId } = await params;
     const body = await request.json();
     const { role, content, sources = [] } = body;
 
@@ -144,12 +144,12 @@ export async function POST(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { conversationId: string; messageId: string } }
+  { params }: { params: Promise<{ conversationId: string; messageId: string }> }
 ) {
   const startTime = Date.now();
 
   try {
-    const { messageId } = params;
+    const { messageId, conversationId } = await params;
 
     const { error } = await supabase
       .from('messages')
@@ -161,7 +161,7 @@ export async function DELETE(
     }
 
     const duration = Date.now() - startTime;
-    logApiCall('DELETE', `/api/conversations/${params.conversationId}/messages/${messageId}`, duration);
+    logApiCall('DELETE', `/api/conversations/${conversationId}/messages/${messageId}`, duration);
 
     return NextResponse.json({
       success: true,
