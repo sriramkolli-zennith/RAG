@@ -11,7 +11,7 @@ export async function GET() {
     const supabase = createServerClient();
     
     // Try calling with a simple test embedding
-    const testEmbedding = Array(384).fill(0.1);
+    const testEmbedding = Array(1536).fill(0.1);
     const embeddingString = `[${testEmbedding.join(',')}]`;
     
     console.log('Testing RPC with:', {

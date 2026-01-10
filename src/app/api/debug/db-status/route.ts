@@ -52,7 +52,7 @@ export async function GET() {
     try {
       // This will fail if dimensions don't match
       const { data: testData, error: dimError } = await supabase.rpc('match_documents', {
-        query_embedding: Array(384).fill(0.01),
+        query_embedding: Array(1536).fill(0.01),
         match_threshold: 0.0, // Very low threshold to find anything
         match_count: 1,
       });

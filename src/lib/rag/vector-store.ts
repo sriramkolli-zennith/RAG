@@ -1,5 +1,5 @@
 import { createServerClient } from '../supabase/client';
-import { generateEmbedding } from '../embeddings/local';
+import { generateEmbedding } from '../openai/embeddings';
 import { Document, DocumentInsert } from '../supabase/database.types';
 
 /**

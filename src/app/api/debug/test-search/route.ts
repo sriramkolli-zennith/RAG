@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/client';
-import { generateEmbedding } from '@/lib/embeddings/local';
+import { generateEmbedding } from '@/lib/openai/embeddings';
 
 /**
  * GET /api/debug/test-search
