@@ -36,13 +36,12 @@ export async function GET() {
         const parsed = JSON.parse(data.embedding);
         embeddingInfo = {
           ...embeddingInfo,
-          parsedType: typeof parsed,
           parsedIsArray: Array.isArray(parsed),
           parsedLength: Array.isArray(parsed) ? parsed.length : 'N/A',
           parsedSample: Array.isArray(parsed) ? parsed.slice(0, 5) : 'N/A',
-        };
+        } as any;
       } catch (e: any) {
-        embeddingInfo = { ...embeddingInfo, parseError: e.message };
+        embeddingInfo = { ...embeddingInfo, parseError: e.message } as any;
       }
     }
 

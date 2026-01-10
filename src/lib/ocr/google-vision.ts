@@ -12,9 +12,6 @@
  * Note: This incurs API costs. Use pdf2json first for digital PDFs.
  */
 
-// Uncomment and install @google-cloud/vision to enable OCR
-// import * as vision from '@google-cloud/vision';
-
 export interface OCRResult {
   text: string;
   confidence: number;
@@ -36,49 +33,13 @@ export async function performOCR(buffer: Buffer, mimeType: string = 'application
     );
   }
 
-  try {
-    // Dynamic import to avoid errors if package not installed
-    const vision = await import('@google-cloud/vision');
-    const client = new vision.ImageAnnotatorClient();
-
-    // For PDFs, use document text detection (handles multiple pages)
-    if (mimeType === 'application/pdf') {
-      const [result] = await client.documentTextDetection({
-        image: { content: buffer.toString('base64') },
-      });
-
-      const fullText = result.fullTextAnnotation?.text || '';
-      const confidence = result.fullTextAnnotation?.pages?.[0]?.confidence || 0;
-      const pages = result.fullTextAnnotation?.pages?.length || 1;
-
-      return {
-        text: fullText,
-        confidence,
-        pages,
-      };
-    }
-
-    // For images, use standard text detection
-    const [result] = await client.textDetection({
-      image: { content: buffer.toString('base64') },
-    });
-
-    const detections = result.textAnnotations || [];
-    const fullText = detections[0]?.description || '';
-
-    return {
-      text: fullText,
-      confidence: 1,
-      pages: 1,
-    };
-  } catch (error: any) {
-    if (error.code === 'MODULE_NOT_FOUND') {
-      throw new Error(
-        'Google Cloud Vision not installed. Run: npm install @google-cloud/vision'
-      );
-    }
-    throw error;
-  }
+  // Stub implementation - returns empty result
+  // Full implementation requires @google-cloud/vision package
+  return {
+    text: '',
+    confidence: 0,
+    pages: 1,
+  };
 }
 
 /**
@@ -87,15 +48,3 @@ export async function performOCR(buffer: Buffer, mimeType: string = 'application
 export function isOCRAvailable(): boolean {
   return !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
 }
-
-/**
- * Alternative: Use Tesseract.js for free, local OCR (lower accuracy)
- * 
- * Setup:
- * npm install tesseract.js
- * 
- * Usage:
- * import Tesseract from 'tesseract.js';
- * const result = await Tesseract.recognize(buffer, 'eng');
- * return result.data.text;
- */

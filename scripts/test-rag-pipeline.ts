@@ -70,7 +70,8 @@ async function testPipeline() {
   if (typeof embeddingStr === 'string') {
     // Parse if string
     try {
-      const parsed = JSON.parse(embeddingStr.replace(/^\[/, '').replace(/\]$/, '').split(','));
+      const cleaned = embeddingStr.replace(/^\[/, '').replace(/\]$/, '');
+      const parsed = JSON.parse(`[${cleaned}]`);
       embeddingLength = parsed.length;
     } catch {
       // Try another format
@@ -89,7 +90,7 @@ async function testPipeline() {
   console.log('\n🔍 Test 3: Testing vector search RPC function...');
   
   // Import embedding function
-  const { generateEmbedding } = await import('../src/lib/embeddings/local.ts');
+  const { generateEmbedding } = await import('../src/lib/openai/embeddings');
   
   const testQueries = ['skills', 'work experience', 'education', 'projects'];
   
