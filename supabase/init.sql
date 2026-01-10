@@ -183,24 +183,16 @@ CREATE TRIGGER update_conversations_updated_at
 -- ROW LEVEL SECURITY (RLS)
 -- =====================================================
 
--- Enable RLS
-ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+-- Disable RLS on documents (seeding uses service_role, RLS blocks it)
+-- Documents can be accessed by anyone during development
+ALTER TABLE documents DISABLE ROW LEVEL SECURITY;
+
+-- Enable RLS on other tables
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
-
--- Documents RLS - allow all to read and insert
-DROP POLICY IF EXISTS documents_select_policy ON documents;
-CREATE POLICY documents_select_policy
-ON documents FOR SELECT 
-USING (true);
-
-DROP POLICY IF EXISTS documents_insert_policy ON documents;
-CREATE POLICY documents_insert_policy
-ON documents FOR INSERT 
-WITH CHECK (true);
 
 -- Conversations RLS - allow read/write own conversations
 DROP POLICY IF EXISTS conversations_user_access ON conversations;
@@ -267,3 +259,15 @@ COMMENT ON FUNCTION match_documents IS 'Vector similarity search using cosine di
 -- ✓ Triggers for timestamp management
 -- ✓ Vector similarity search function
 -- =====================================================
+
+-- =====================================================
+-- GRANT PERMISSIONS (Required for seeding)
+-- =====================================================
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON documents TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON conversations TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON messages TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON chat_history TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON users TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON analytics_events TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION match_documents TO anon, authenticated, service_role;
