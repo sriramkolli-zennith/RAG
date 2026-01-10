@@ -182,6 +182,14 @@ A complete RAG system needs these components:
 | **Chunking** | Splitting documents into smaller pieces |
 | **Similarity Score** | How closely a document matches a query (0-1) |
 
+## In This Project
+
+Our RAG implementation uses:
+- **Local Embeddings**: Transformers.js (all-MiniLM-L6-v2, 384 dimensions) - FREE!
+- **Vector Database**: Supabase with pgvector
+- **LLM**: Azure OpenAI (GPT-4o-mini)
+- **Framework**: Next.js 14+ with App Router
+
 ## Next Steps
 
 Now that you understand RAG, learn about the building blocks:
@@ -192,4 +200,4 @@ Now that you understand RAG, learn about the building blocks:
 
 ---
 
-[Next: Understanding Embeddings →](02-embeddings.md)
+[← Overview](00-overview.md) | [Next: Understanding Embeddings →](02-embeddings.md)

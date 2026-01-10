@@ -68,33 +68,43 @@ Different models produce different embeddings:
 
 | Model | Dimensions | Provider | Best For |
 |-------|------------|----------|----------|
+| **all-MiniLM-L6-v2** | **384** | **Transformers.js** | **This project (Local, Free)** |
 | text-embedding-ada-002 | 1536 | OpenAI | General purpose |
 | text-embedding-3-small | 1536 | OpenAI | Cost-effective |
 | text-embedding-3-large | 3072 | OpenAI | Highest quality |
-| all-MiniLM-L6-v2 | 384 | Open Source | Fast, local |
 | Cohere embed-v3 | 1024 | Cohere | Multilingual |
+
+> **This Project**: Uses `all-MiniLM-L6-v2` locally via Transformers.js - no API costs, no rate limits!
 
 ## Working with Embeddings in Code
 
-### Generating an Embedding
+### Our Local Embedding Implementation
 
 ```typescript
-import OpenAI from 'openai';
+// src/lib/embeddings/local.ts
+import { pipeline } from '@xenova/transformers';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2';
+let embeddingPipeline: any = null;
 
-async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await openai.embeddings.create({
-    model: 'text-embedding-ada-002',
-    input: text,
-  });
-  
-  return response.data[0].embedding; // Array of 1536 numbers
+async function getEmbeddingPipeline() {
+  if (!embeddingPipeline) {
+    console.log('[Embeddings] Loading local embedding model...');
+    embeddingPipeline = await pipeline('feature-extraction', MODEL_NAME);
+  }
+  return embeddingPipeline;
+}
+
+export async function generateEmbedding(text: string): Promise<number[]> {
+  const cleanedText = text.replace(/\n/g, ' ').trim();
+  const extractor = await getEmbeddingPipeline();
+  const output = await extractor(cleanedText, { pooling: 'mean', normalize: true });
+  return Array.from(output.data) as number[]; // Array of 384 numbers
 }
 
 // Usage
 const embedding = await generateEmbedding("What is machine learning?");
-console.log(`Vector dimensions: ${embedding.length}`); // 1536
+console.log(`Vector dimensions: ${embedding.length}`); // 384
 ```
 
 ### Comparing Embeddings
@@ -146,9 +156,19 @@ cos(θ) = (A · B) / (||A|| × ||B||)
 | 0.5-0.7 | Somewhat related |
 | < 0.5 | Unrelated |
 
-## Why 1536 Dimensions?
+## Why 384 Dimensions?
 
-More dimensions = more nuance captured.
+Our project uses 384 dimensions (all-MiniLM-L6-v2) instead of 1536 (OpenAI):
+
+| Aspect | 384 Dimensions | 1536 Dimensions |
+|--------|----------------|-----------------|
+| **Model** | all-MiniLM-L6-v2 | OpenAI ada-002 |
+| **Speed** | ~50-100ms | ~200-500ms |
+| **Cost** | Free (local) | $0.10/1M tokens |
+| **Quality** | ~90-95% of OpenAI | Baseline |
+| **Offline** | ✅ Yes | ❌ No |
+
+More dimensions = more nuance, but 384 is excellent for most use cases!
 
 Think of it like describing a person:
 
@@ -157,46 +177,54 @@ Think of it like describing a person:
 | 2 | Tall, Short |
 | 5 | Tall, Short, Old, Young, Friendly |
 | 100 | Height, Age, Personality traits, Hobbies, ... |
-| 1536 | Every nuance of meaning! |
+| 384 | Captures semantic meaning effectively! |
+| 1536 | Maximum nuance (often overkill) |
 
 ## Practical Considerations
 
 ### Token Limits
 Embedding models have maximum input sizes:
+- all-MiniLM-L6-v2: ~512 tokens (~400 words)
 - ada-002: 8,191 tokens (~6,000 words)
-- For longer texts, you must chunk first
+- For longer texts, you must chunk first (our chunking.ts handles this)
 
 ### Batch Processing
 Process multiple texts efficiently:
 
 ```typescript
-async function generateEmbeddings(texts: string[]): Promise<number[][]> {
-  const response = await openai.embeddings.create({
-    model: 'text-embedding-ada-002',
-    input: texts, // Array of texts
+// src/lib/embeddings/local.ts
+export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
+  const cleanedTexts = texts.map(text => text.replace(/\n/g, ' ').trim());
+  
+  // Check cache first, process uncached in batch
+  const results: (number[] | null)[] = new Array(cleanedTexts.length).fill(null);
+  const uncachedTexts: string[] = [];
+  
+  cleanedTexts.forEach((text, index) => {
+    const cached = embeddingCache.get(getCacheKey(text));
+    if (cached) results[index] = cached;
+    else uncachedTexts.push(text);
   });
   
-  return response.data.map(d => d.embedding);
+  // Generate uncached embeddings
+  if (uncachedTexts.length > 0) {
+    const extractor = await getEmbeddingPipeline();
+    // Process batch through model...
+  }
+  
+  return results as number[][];
 }
-
-// Process multiple at once
-const embeddings = await generateEmbeddings([
-  "First document",
-  "Second document",
-  "Third document"
-]);
 ```
 
-### Cost Considerations
+### Cost Considerations (Why We Use Local)
 | Model | Price per 1M tokens |
 |-------|---------------------|
+| **all-MiniLM-L6-v2 (Local)** | **$0.00** |
 | text-embedding-ada-002 | $0.10 |
 | text-embedding-3-small | $0.02 |
 | text-embedding-3-large | $0.13 |
 
-Average document (500 words ≈ 700 tokens):
-- ~1,400 documents per $0.10 with ada-002
-- ~7,000 documents per $0.10 with 3-small
+**Our Choice**: Free local embeddings + Azure OpenAI only for chat completions = optimal cost!
 
 ## Common Pitfalls
 
@@ -245,22 +273,29 @@ Want to see your embeddings? These tools project high-dimensional vectors into 2
 ## Key Takeaways
 
 1. **Embeddings capture meaning** - Similar text = similar vectors
-2. **Fixed dimensions** - Every embedding has the same size (e.g., 1536)
-3. **Cosine similarity** - Measures how alike two embeddings are
-4. **Consistency is key** - Use the same model for indexing and search
+2. **Our model: 384 dimensions** - all-MiniLM-L6-v2 via Transformers.js
+3. **Cosine similarity** - Measures how alike two embeddings are (use 0.1-0.3 threshold for local model)
+4. **Consistency is key** - Same model for indexing and search
 5. **Chunk large documents** - Stay within token limits
+6. **Local = Free** - No API costs, no rate limits, works offline
 
 ## In Our Project
 
-The embedding service is in [src/lib/openai/embeddings.ts](../src/lib/openai/embeddings.ts):
+The embedding service is in [src/lib/embeddings/local.ts](../src/lib/embeddings/local.ts):
 
 ```typescript
 // Generate embedding for a query
-const queryEmbedding = await generateEmbedding("What is RAG?");
+import { generateEmbedding } from '@/lib/embeddings/local';
 
-// Compare embeddings for similarity
-const similarity = cosineSimilarity(queryEmbedding, documentEmbedding);
+const queryEmbedding = await generateEmbedding("What is RAG?");
+// Returns: Array of 384 numbers
+
+// The vector-store uses this internally for search
+import { searchDocuments } from '@/lib/rag/vector-store';
+const results = await searchDocuments("What is RAG?", 0.1, 5);
 ```
+
+**Note**: Embeddings are cached using an LRU cache with 24-hour TTL for performance.
 
 ---
 

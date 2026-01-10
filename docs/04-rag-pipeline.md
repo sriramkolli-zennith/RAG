@@ -112,39 +112,27 @@ function splitIntoChunks(text: string, options: ChunkOptions): string[] {
 
 ### Step 4: Generate Embeddings
 
-Convert each chunk to a vector:
+Convert each chunk to a vector using **local embeddings** (free, no API):
 
 ```typescript
-import OpenAI from 'openai';
+// src/lib/embeddings/local.ts
+import { pipeline } from '@xenova/transformers';
 
-const openai = new OpenAI();
+const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2';  // 384 dimensions
 
-async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await openai.embeddings.create({
-    model: 'text-embedding-ada-002',
-    input: text,
-  });
-  
-  return response.data[0].embedding;
+export async function generateEmbedding(text: string): Promise<number[]> {
+  const extractor = await pipeline('feature-extraction', MODEL_NAME);
+  const output = await extractor(text, { pooling: 'mean', normalize: true });
+  return Array.from(output.data) as number[];  // 384 numbers
 }
 
 // Process chunks in batches
 async function embedChunks(chunks: string[]): Promise<number[][]> {
-  const batchSize = 10;
-  const embeddings: number[][] = [];
-  
-  for (let i = 0; i < chunks.length; i += batchSize) {
-    const batch = chunks.slice(i, i + batchSize);
-    const response = await openai.embeddings.create({
-      model: 'text-embedding-ada-002',
-      input: batch,
-    });
-    
-    embeddings.push(...response.data.map(d => d.embedding));
-  }
-  
-  return embeddings;
+  return Promise.all(chunks.map(chunk => generateEmbedding(chunk)));
 }
+```
+
+**Note**: Our project uses local Transformers.js embeddings (384D) instead of OpenAI (1536D) - completely free!
 ```
 
 ### Step 5: Store in Vector Database
@@ -230,20 +218,32 @@ const queryEmbedding = await generateEmbedding(userQuery);
 ### Step 3: Retrieve Relevant Documents
 
 ```typescript
-async function retrieveDocuments(
-  queryEmbedding: number[],
-  options: { threshold: number; limit: number }
-): Promise<Array<{ content: string; similarity: number }>> {
-  const supabase = createClient(url, key);
+// src/lib/rag/vector-store.ts
+async function searchDocuments(
+  query: string,
+  matchThreshold: number = 0.1,  // Lower for local embeddings
+  matchCount: number = 5
+): Promise<SearchResult[]> {
+  const supabase = createServerClient();
   
+  // Generate embedding locally (384D)
+  const queryEmbedding = await generateEmbedding(query);
+  
+  // Format as PostgreSQL vector string
+  const embeddingString = `[${queryEmbedding.join(',')}]`;
+  
+  // Call RPC function
   const { data } = await supabase.rpc('match_documents', {
-    query_embedding: queryEmbedding,
-    match_threshold: options.threshold,
-    match_count: options.limit,
+    query_embedding: embeddingString,
+    match_threshold: matchThreshold,
+    match_count: matchCount,
   });
   
   return data;
 }
+```
+
+**Important**: Local embeddings produce lower similarity scores (0.1-0.5) compared to OpenAI (0.7-0.95). Use threshold of 0.1-0.3.
 ```
 
 ### Step 4: Augment the Prompt
@@ -311,23 +311,21 @@ async function query(userQuery: string): Promise<{
 
 ## The System Prompt
 
-A good system prompt is crucial for consistent responses:
+Our actual system prompt (from `src/lib/rag/engine.ts`):
 
 ```typescript
-const SYSTEM_PROMPT = `You are a knowledgeable assistant that answers questions 
-based on the provided context.
+const SYSTEM_PROMPT = `You are a helpful knowledge base assistant. Your job is to answer questions based on the provided context from the knowledge base.
 
-RULES:
-1. Only answer based on the provided context
-2. If the context doesn't have the answer, say "I don't have information about that"
-3. Be concise but thorough
-4. Use bullet points for lists
-5. Cite specific parts of the context when relevant
+GUIDELINES:
+1. Use the provided documents to answer questions as accurately as possible
+2. If the context contains relevant information, use it to formulate a helpful response
+3. If the documents contain partial information, share what you found and note any gaps
+4. When citing information, reference the document number (e.g., "According to Document 1...")
+5. If the context genuinely doesn't contain ANY relevant information, say: "I couldn't find information about this in the knowledge base."
+6. Be helpful and conversational while staying grounded in the provided context
+7. If information spans multiple documents, synthesize it into a coherent answer
 
-TONE:
-- Professional but friendly
-- Confident when information is clear
-- Honest about limitations`;
+Remember: The user has uploaded documents to this knowledge base, so try your best to find and present relevant information from the context provided.`;
 ```
 
 ## Advanced: Conversation History
@@ -465,18 +463,34 @@ The RAG engine is in [src/lib/rag/engine.ts](../src/lib/rag/engine.ts):
 ```typescript
 import { chat, streamChat } from '@/lib/rag';
 
-// Simple query
-const response = await chat("What is RAG?", sessionId);
+// Simple query with options
+const response = await chat("What is RAG?", sessionId, {
+  matchThreshold: 0.1,  // Lower for local embeddings
+  matchCount: 5,
+  includeHistory: true,
+});
 console.log(response.answer);
 console.log(response.sources);
 
 // Streaming query
 for await (const chunk of streamChat("What is RAG?", sessionId)) {
-  if (chunk.type === 'token') {
+  if (chunk.type === 'sources') {
+    console.log('Sources:', chunk.data);
+  } else if (chunk.type === 'token') {
     process.stdout.write(chunk.data);
   }
 }
 ```
+
+### Key Implementation Details
+
+| Aspect | Our Implementation |
+|--------|-------------------|
+| **Embeddings** | Local (Transformers.js, 384D) |
+| **Chat Model** | Azure OpenAI (GPT-4o-mini) |
+| **Threshold** | 0.1 (default for local) |
+| **Chunk Size** | 1500 chars with 300 overlap |
+| **History** | Stored in Supabase |
 
 ## Key Takeaways
 

@@ -134,16 +134,20 @@ CREATE TABLE documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   content TEXT NOT NULL,
   metadata JSONB DEFAULT '{}',
-  embedding VECTOR(1536),  -- Matches OpenAI ada-002 dimensions
-  created_at TIMESTAMP DEFAULT NOW()
+  embedding VECTOR(384),  -- Matches local all-MiniLM-L6-v2 dimensions
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 ```
+
+**Note**: We use 384 dimensions for local Transformers.js embeddings. If using OpenAI, use 1536.
 
 ### 3. Create a Similarity Search Function
 
 ```sql
-CREATE FUNCTION match_documents(
-  query_embedding VECTOR(1536),
+-- Our actual function (from migrations/003_switch_to_local_embeddings.sql)
+CREATE OR REPLACE FUNCTION match_documents(
+  query_embedding TEXT,        -- Receives string like '[0.1, 0.2, ...]'
   match_threshold FLOAT DEFAULT 0.7,
   match_count INT DEFAULT 5
 )
@@ -161,14 +165,19 @@ BEGIN
     documents.id,
     documents.content,
     documents.metadata,
-    1 - (documents.embedding <=> query_embedding) AS similarity
+    1 - (documents.embedding <=> query_embedding::vector(384)) AS similarity
   FROM documents
-  WHERE 1 - (documents.embedding <=> query_embedding) > match_threshold
-  ORDER BY documents.embedding <=> query_embedding
+  WHERE 1 - (documents.embedding <=> query_embedding::vector(384)) > match_threshold
+  ORDER BY documents.embedding <=> query_embedding::vector(384)
   LIMIT match_count;
 END;
 $$;
 ```
+
+**Key points:**
+- `<=>` is the cosine distance operator
+- `1 - distance` converts to similarity (0-1)
+- Text input is cast to vector with explicit dimensions
 
 ### 4. Create an Index for Performance
 
@@ -313,8 +322,8 @@ The vector store is in [src/lib/rag/vector-store.ts](../src/lib/rag/vector-store
 // Add a document
 await addDocument(content, { source: 'manual' });
 
-// Search for similar documents
-const results = await searchDocuments(query, 0.7, 5);
+// Search for similar documents (threshold 0.1 for local embeddings)
+const results = await searchDocuments(query, 0.1, 5);
 ```
 
 ## Key Takeaways
@@ -323,7 +332,8 @@ const results = await searchDocuments(query, 0.7, 5);
 2. **pgvector** - Free PostgreSQL extension for vector operations
 3. **Indexes matter** - IVFFlat or HNSW for large datasets
 4. **Cosine distance** - Default for text embeddings
-5. **Thresholds** - 0.7 is a good starting point for relevance
+5. **Thresholds** - Use 0.1-0.3 for local embeddings (lower scores than OpenAI)
+6. **Our setup** - Supabase + pgvector with 384-dimension vectors
 
 ---
 

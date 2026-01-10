@@ -14,16 +14,17 @@ http://localhost:3000/api
 
 ### POST /api/chat
 
-Send a message and receive a RAG-powered response.
+Send a message and receive a RAG-powered response with conversation support.
 
 #### Request
 
 ```typescript
 {
-  "message": string,      // Required: The user's question
-  "sessionId": string,    // Required: Unique session identifier
-  "options": {            // Optional: Configuration
-    "matchThreshold": number,  // Min similarity (0-1), default: 0.7
+  "message": string,         // Required: The user's question
+  "sessionId": string,       // Required: Unique session identifier
+  "conversationId": string,  // Optional: Conversation ID for history
+  "options": {               // Optional: Configuration
+    "matchThreshold": number,  // Min similarity (0-1), default: 0.1
     "matchCount": number,      // Max results, default: 5
     "includeHistory": boolean  // Include chat history, default: true
   }
@@ -40,12 +41,13 @@ Send a message and receive a RAG-powered response.
     "sources": [             // Retrieved documents
       {
         "id": string,
-        "content": string,   // Truncated preview
+        "content": string,   // Truncated to 200 chars + "..."
         "metadata": object,
         "similarity": number // 0-1 score
       }
     ],
-    "sessionId": string
+    "sessionId": string,
+    "conversationId": string
   }
 }
 ```
@@ -57,29 +59,18 @@ curl -X POST http://localhost:3000/api/chat \
   -H "Content-Type: application/json" \
   -d '{
     "message": "What is RAG?",
-    "sessionId": "session_123"
+    "sessionId": "session_123",
+    "options": {
+      "matchThreshold": 0.1,
+      "matchCount": 5
+    }
   }'
 ```
 
-#### Response Example
-
-```json
-{
-  "success": true,
-  "data": {
-    "answer": "RAG (Retrieval-Augmented Generation) is an AI framework that combines information retrieval with text generation...",
-    "sources": [
-      {
-        "id": "doc_abc123",
-        "content": "RAG Overview: RAG (Retrieval-Augmented Generation) is an AI framework...",
-        "metadata": { "source": "RAG Documentation" },
-        "similarity": 0.94
-      }
-    ],
-    "sessionId": "session_123"
-  }
-}
-```
+#### Notes
+- Uses local embeddings (384 dimensions) - recommended threshold is 0.1-0.3
+- Messages are automatically saved to conversation history
+- Conversation timestamp is updated after each message
 
 ---
 
@@ -169,35 +160,434 @@ Retrieve all documents from the knowledge base.
 }
 ```
 
-#### Example
-
-```bash
-curl http://localhost:3000/api/documents
-```
-
 ---
 
 ### POST /api/documents
 
-Add a new document to the knowledge base.
+Add a new document or batch of documents to the knowledge base.
 
-#### Request
+#### Single Document Request
 
 ```typescript
 {
-  "content": string,     // Required: Document content
+  "content": string,     // Required: Document content (min 10 chars)
   "metadata": object,    // Optional: Additional metadata
   "chunk": boolean,      // Optional: Auto-chunk, default: true
   "chunkOptions": {      // Optional: Chunking configuration
-    "chunkSize": number,   // Characters per chunk, default: 1000
-    "chunkOverlap": number // Overlap between chunks, default: 200
+    "chunkSize": number,   // Characters per chunk, default: 1500
+    "chunkOverlap": number // Overlap between chunks, default: 300
   }
+}
+```
+
+#### Batch Upload Request
+
+```typescript
+{
+  "documents": [         // Required: Array of documents (max 100)
+    {
+      "content": string, // Required: Document content
+      "source": string   // Optional: Source identifier
+    }
+  ]
 }
 ```
 
 #### Response
 
 ```typescript
+{
+  "success": true,
+  "data": {
+    "message": string,
+    "count": number,
+    "documentIds": string[]
+  }
+}
+```
+
+---
+
+### POST /api/documents/upload
+
+Upload files (including PDFs) with automatic text extraction and chunking.
+
+#### Request
+
+`multipart/form-data` with:
+- `files`: One or more files (TXT, MD, DOC, DOCX, PDF)
+
+#### Response
+
+```typescript
+{
+  "success": true,
+  "data": {
+    "message": string,
+    "count": number,
+    "documentIds": string[]
+  }
+}
+```
+
+#### Example
+
+```bash
+curl -X POST http://localhost:3000/api/documents/upload \
+  -F "files=@document1.pdf" \
+  -F "files=@document2.txt"
+```
+
+#### Notes
+- PDF text is extracted using pdf2json
+- For scanned PDFs, OCR is recommended (see Google Vision integration)
+- Documents are automatically chunked with default settings
+
+---
+
+### DELETE /api/documents
+
+Delete a document from the knowledge base.
+
+#### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | Document ID to delete |
+
+#### Response
+
+```typescript
+{
+  "success": true,
+  "message": "Document deleted successfully"
+}
+```
+
+---
+
+## Search Endpoint
+
+### POST /api/search
+
+Perform semantic search on the knowledge base.
+
+#### Request
+
+```typescript
+{
+  "query": string,          // Required: Search query (max 1000 chars)
+  "matchThreshold": number, // Optional: Min similarity (0-1), default: 0.1
+  "matchCount": number      // Optional: Max results (1-20), default: 10
+}
+```
+
+#### Response
+
+```typescript
+{
+  "success": true,
+  "data": [
+    {
+      "id": string,
+      "content": string,
+      "metadata": object,
+      "similarity": number
+    }
+  ],
+  "count": number
+}
+```
+
+#### Notes
+- Uses local embeddings with 384 dimensions
+- Recommended threshold: 0.1 - 0.3 (local models produce lower scores than OpenAI)
+- Results are sorted by similarity (highest first)
+
+---
+
+## Conversation Endpoints
+
+### GET /api/conversations
+
+Get all conversations for a session or user.
+
+#### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sessionId` | string | No | Filter by session |
+| `userId` | string | No | Filter by user |
+
+#### Response
+
+```typescript
+{
+  "success": true,
+  "data": [
+    {
+      "id": string,
+      "session_id": string,
+      "user_id": string | null,
+      "title": string,
+      "created_at": string,
+      "updated_at": string,
+      "archived": boolean
+    }
+  ],
+  "count": number
+}
+```
+
+---
+
+### POST /api/conversations
+
+Create a new conversation.
+
+#### Request
+
+```typescript
+{
+  "sessionId": string,  // Required: Session identifier
+  "title": string,      // Optional: Conversation title
+  "userId": string      // Optional: User identifier
+}
+```
+
+#### Response
+
+```typescript
+{
+  "success": true,
+  "data": {
+    "id": string,
+    "session_id": string,
+    "title": string,
+    "created_at": string
+  }
+}
+```
+
+---
+
+### GET /api/conversations/[conversationId]/messages
+
+Get all messages for a conversation.
+
+#### Response
+
+```typescript
+{
+  "success": true,
+  "data": [
+    {
+      "id": string,
+      "role": "user" | "assistant",
+      "content": string,
+      "sources": object[],
+      "created_at": string
+    }
+  ]
+}
+```
+
+---
+
+### POST /api/conversations/[conversationId]/export
+
+Export conversation in various formats.
+
+---
+
+## Analytics Endpoint
+
+### GET /api/analytics
+
+Get usage analytics for the specified time period.
+
+#### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `days` | number | No | Number of days (default: 7) |
+
+#### Response
+
+```typescript
+{
+  "success": true,
+  "data": {
+    "period": string,
+    "conversations": {
+      "total": number,
+      "perDay": number
+    },
+    "messages": {
+      "total": number,
+      "perConversation": number
+    }
+  }
+}
+```
+
+---
+
+### POST /api/analytics
+
+Track an analytics event.
+
+#### Request
+
+```typescript
+{
+  "event": string,       // Event name (e.g., "message_sent")
+  "properties": object   // Event properties
+}
+```
+
+---
+
+## Debug Endpoints
+
+These endpoints are available for debugging and development:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/debug/db-status` | GET | Check database connection |
+| `/api/debug/check-embeddings` | GET | Verify embedding dimensions |
+| `/api/debug/documents` | GET | List documents with metadata |
+| `/api/debug/test-search` | POST | Test semantic search |
+| `/api/debug/function-test` | GET | Test match_documents function |
+| `/api/debug/raw-query` | POST | Execute raw SQL query |
+
+---
+
+## Health Endpoint
+
+### GET /api/health
+
+Check API health status.
+
+#### Response
+
+```typescript
+{
+  "status": "ok",
+  "timestamp": string
+}
+```
+
+---
+
+## Error Responses
+
+All endpoints return errors in this format:
+
+```typescript
+{
+  "error": string,             // Error message
+  "message": string,           // Detailed message (dev mode only)
+  "details": string[]          // Validation errors (if applicable)
+}
+```
+
+### HTTP Status Codes
+
+| Code | Meaning |
+|------|---------|
+| 200 | Success |
+| 400 | Bad Request - Invalid input or validation failed |
+| 500 | Internal Server Error - Something went wrong |
+
+---
+
+## Input Validation
+
+All endpoints use Zod for validation. Key constraints:
+
+| Field | Constraints |
+|-------|-------------|
+| `message` | 1-5000 characters |
+| `sessionId` | Non-empty string |
+| `content` (document) | Min 10 characters |
+| `query` (search) | 1-1000 characters |
+| `documents` (batch) | 1-100 items |
+
+---
+
+## TypeScript Types
+
+### Message Types
+
+```typescript
+interface ChatRequest {
+  message: string;
+  sessionId: string;
+  conversationId?: string;
+  options?: {
+    matchThreshold?: number;  // default: 0.1
+    matchCount?: number;      // default: 5
+    includeHistory?: boolean; // default: true
+  };
+}
+
+interface ChatResponse {
+  success: boolean;
+  data: {
+    answer: string;
+    sources: Source[];
+    sessionId: string;
+    conversationId?: string;
+  };
+}
+
+interface Source {
+  id: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  similarity: number;
+}
+```
+
+### Document Types
+
+```typescript
+interface Document {
+  id: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  embedding?: number[];  // 384 dimensions
+  created_at: string;
+  updated_at: string;
+}
+
+interface DocumentCreate {
+  content: string;
+  metadata?: Record<string, unknown>;
+  chunk?: boolean;
+  chunkOptions?: {
+    chunkSize?: number;    // default: 1500
+    chunkOverlap?: number; // default: 300
+  };
+}
+```
+
+---
+
+## Rate Limits
+
+Using local embeddings eliminates API rate limits for embeddings. Only chat completions have Azure OpenAI limits:
+
+| Operation | Limit |
+|-----------|-------|
+| Chat requests | Based on Azure OpenAI tier |
+| Document additions | Unlimited (local embeddings) |
+| Search requests | Unlimited (local embeddings) |
+
+---
+
+[← Previous: RAG Pipeline](04-rag-pipeline.md) | [Next: Architecture →](06-architecture.md)
 {
   "success": true,
   "data": Document | Document[],  // Created document(s)
