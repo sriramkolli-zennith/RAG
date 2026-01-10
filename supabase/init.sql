@@ -167,12 +167,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER IF NOT EXISTS update_documents_updated_at
+DROP TRIGGER IF EXISTS update_documents_updated_at ON documents;
+CREATE TRIGGER update_documents_updated_at
   BEFORE UPDATE ON documents
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER IF NOT EXISTS update_conversations_updated_at
+DROP TRIGGER IF EXISTS update_conversations_updated_at ON conversations;
+CREATE TRIGGER update_conversations_updated_at
   BEFORE UPDATE ON conversations
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
@@ -190,17 +192,20 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
 
 -- Documents RLS - allow all to read
-CREATE POLICY IF NOT EXISTS documents_select_policy
+DROP POLICY IF EXISTS documents_select_policy ON documents;
+CREATE POLICY documents_select_policy
 ON documents FOR SELECT 
 USING (true);
 
 -- Conversations RLS - allow read/write own conversations
-CREATE POLICY IF NOT EXISTS conversations_user_access
+DROP POLICY IF EXISTS conversations_user_access ON conversations;
+CREATE POLICY conversations_user_access
 ON conversations FOR ALL 
 USING (user_id IS NULL OR auth.uid()::text = user_id);
 
 -- Messages RLS - allow read/write messages in user's conversations
-CREATE POLICY IF NOT EXISTS messages_conversation_access
+DROP POLICY IF EXISTS messages_conversation_access ON messages;
+CREATE POLICY messages_conversation_access
 ON messages FOR ALL 
 USING (
   conversation_id IN (
@@ -209,21 +214,25 @@ USING (
 );
 
 -- Chat history RLS - allow all authenticated users
-CREATE POLICY IF NOT EXISTS chat_history_all_access
+DROP POLICY IF EXISTS chat_history_all_access ON chat_history;
+CREATE POLICY chat_history_all_access
 ON chat_history FOR ALL 
 USING (true);
 
 -- Users RLS - allow users to read/write own profile
-CREATE POLICY IF NOT EXISTS users_own_profile
+DROP POLICY IF EXISTS users_own_profile ON users;
+CREATE POLICY users_own_profile
 ON users FOR ALL 
 USING (auth.uid() = id);
 
 -- Analytics RLS - allow all users to insert, admins to read
-CREATE POLICY IF NOT EXISTS analytics_insert_policy
+DROP POLICY IF EXISTS analytics_insert_policy ON analytics_events;
+CREATE POLICY analytics_insert_policy
 ON analytics_events FOR INSERT 
 WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS analytics_select_policy
+DROP POLICY IF EXISTS analytics_select_policy ON analytics_events;
+CREATE POLICY analytics_select_policy
 ON analytics_events FOR SELECT 
 USING (true);
 
