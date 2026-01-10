@@ -191,11 +191,16 @@ ALTER TABLE chat_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
 
--- Documents RLS - allow all to read
+-- Documents RLS - allow all to read and insert
 DROP POLICY IF EXISTS documents_select_policy ON documents;
 CREATE POLICY documents_select_policy
 ON documents FOR SELECT 
 USING (true);
+
+DROP POLICY IF EXISTS documents_insert_policy ON documents;
+CREATE POLICY documents_insert_policy
+ON documents FOR INSERT 
+WITH CHECK (true);
 
 -- Conversations RLS - allow read/write own conversations
 DROP POLICY IF EXISTS conversations_user_access ON conversations;
